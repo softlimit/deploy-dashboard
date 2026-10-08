@@ -11,14 +11,14 @@ if (!token || !email) {
   process.exit(1)
 }
 
-async function slack(method, body) {
+async function slack(method, params) {
   const res = await fetch(`https://slack.com/api/${method}`, {
     method: 'POST',
     headers: {
       Authorization: `Bearer ${token}`,
-      'Content-Type': 'application/json; charset=utf-8',
+      'Content-Type': 'application/x-www-form-urlencoded',
     },
-    body: JSON.stringify(body),
+    body: new URLSearchParams(params),
   })
   const json = await res.json()
   if (!json.ok) throw new Error(`${method} failed: ${json.error}`)
