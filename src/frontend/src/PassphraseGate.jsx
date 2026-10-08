@@ -41,10 +41,13 @@ export default function PassphraseGate({ children }) {
   }
 
   return (
-    <div style={{ fontFamily: 'sans-serif', maxWidth: 320, margin: '80px auto', padding: 24 }}>
-      <form onSubmit={handleSubmit}>
-        <h1 style={{ fontSize: 20 }}>Deploy Dashboard</h1>
-        <p style={{ fontSize: 13, color: '#666' }}>
+    <div className="gate">
+      <form className="gate-card" onSubmit={handleSubmit}>
+        <h1>
+          <img src={`${import.meta.env.BASE_URL}softlimit-logo.png`} alt="Softlimit" />
+          Deploy Dashboard
+        </h1>
+        <p className="gate-disclosure">
           This is a basic deterrent, not real security — this page's code and data are both
           publicly reachable to anyone with the link.
         </p>
@@ -55,9 +58,8 @@ export default function PassphraseGate({ children }) {
           autoFocus
           value={value}
           onChange={(e) => setValue(e.target.value)}
-          style={{ display: 'block', width: '100%', margin: '8px 0' }}
         />
-        {error && <div style={{ color: 'crimson', fontSize: 13 }}>{error}</div>}
+        {error && <div className="gate-error">{error}</div>}
         <button type="submit">Unlock</button>
       </form>
     </div>
