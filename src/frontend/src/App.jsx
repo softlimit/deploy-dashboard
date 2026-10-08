@@ -36,7 +36,7 @@ export default function App() {
     <>
       <header className="app-header">
         <img src={`${import.meta.env.BASE_URL}softlimit-logo.png`} alt="Softlimit" />
-        <span>Softlimit</span>
+        <span>Deployment Dashboard</span>
       </header>
       <main>
         <h1>Deployment plan — {deployDate ?? 'TBD'}</h1>
