@@ -1,13 +1,14 @@
 import { readFileSync } from 'fs'
 
-const { deployDate, clients: byClient } = JSON.parse(readFileSync('data/data.json', 'utf8'))
+const { deployment } = JSON.parse(readFileSync('data/data.json', 'utf8'))
+const { deployDate, clients: byClient } = deployment
 
 const lines = [`:rocket: Deployment plan for ${deployDate ?? 'TBD'}`, '']
 
 for (const [client, tasks] of Object.entries(byClient)) {
   lines.push(`*${client}*`)
   for (const task of tasks) {
-    const assignee = task.assignee ? ` @${task.assignee}` : ''
+    const assignee = task.assignee ? ` @${task.assignee.name.split(' ')[0]}` : ''
     const icon = !task.ready
       ? ':hourglass_flowing_sand:'
       : task.deployType === 'post-deployment setup'
