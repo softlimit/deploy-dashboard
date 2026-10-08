@@ -40,6 +40,17 @@ function deployDate(task) {
   return field?.value ? new Date(Number(field.value)).toISOString().slice(0, 10) : null
 }
 
+// Deploys always land on Monday, so "next deployment" is always the
+// upcoming Monday (or today, if today is Monday) rather than whatever
+// happens to be the earliest date present in the ClickUp view.
+function nextMonday() {
+  const now = new Date()
+  const day = now.getUTCDay() // 0 = Sunday, 1 = Monday, ...
+  const daysUntilMonday = day === 1 ? 0 : ((8 - day) % 7)
+  now.setUTCDate(now.getUTCDate() + daysUntilMonday)
+  return now.toISOString().slice(0, 10)
+}
+
 function baseTaskRecord(task) {
   return {
     name: task.name,
@@ -71,12 +82,7 @@ if (!deployViewId || !token) {
 
 const deployTasks = await fetchViewTasks(deployViewId, token)
 
-const today = new Date().toISOString().slice(0, 10)
-const upcomingDates = [...new Set(deployTasks.map(deployDate).filter(Boolean))]
-  .filter((d) => d >= today)
-  .sort()
-const targetDate = upcomingDates[0] ?? null
-
+const targetDate = nextMonday()
 const scheduled = deployTasks.filter((t) => deployDate(t) === targetDate)
 const deployment = {
   deployDate: targetDate,
