@@ -3,7 +3,7 @@ import { writeFileSync, mkdirSync } from 'fs'
 import { fetchViewTasks } from '../api/clickupClient.js'
 
 const DEPLOY_STATUSES = new Set(['ready for deploy', 'post deploy setup'])
-const IN_REVISION_STATUSES = new Set(['in revision'])
+const IN_REVISION_STATUSES = new Set(['in revision', 'in progress', 'ready for pr'])
 const IN_REVIEW_STATUSES = new Set(['in review / qa', 'in client review / qa'])
 
 function clientLabel(task) {
@@ -95,17 +95,17 @@ const deployment = {
   ),
 }
 
-let inRevision = { clients: {} }
-let inReview = { clients: {} }
+// Falls back to the same deployment-view tasks (unfiltered by date) when no
+// broader triage view is configured, so the tabs still show real data.
+const triageTasks = triageViewId ? await fetchViewTasks(triageViewId, token) : deployTasks
 
-if (triageViewId) {
-  const triageTasks = await fetchViewTasks(triageViewId, token)
-  const revisionTasks = triageTasks.filter((t) => IN_REVISION_STATUSES.has(t.status.status))
-  const reviewTasks = triageTasks.filter((t) => IN_REVIEW_STATUSES.has(t.status.status))
-  inRevision = { clients: groupByClient(revisionTasks.map(baseTaskRecord)) }
-  inReview = { clients: groupByClient(reviewTasks.map(baseTaskRecord)) }
-} else {
-  console.warn('CLICKUP_TRIAGE_VIEW_ID not set - In Revision / In Review Q/A tabs will be empty.')
+const revisionTasks = triageTasks.filter((t) => IN_REVISION_STATUSES.has(t.status.status))
+const reviewTasks = triageTasks.filter((t) => IN_REVIEW_STATUSES.has(t.status.status))
+const inRevision = { clients: groupByClient(revisionTasks.map(baseTaskRecord)) }
+const inReview = { clients: groupByClient(reviewTasks.map(baseTaskRecord)) }
+
+if (!triageViewId) {
+  console.warn('CLICKUP_TRIAGE_VIEW_ID not set - using CLICKUP_VIEW_ID tasks for triage tabs too.')
 }
 
 const output = { deployment, inRevision, inReview }
