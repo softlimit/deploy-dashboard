@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { dispatchDeployment, nudge } from './dispatch.js'
+import { dispatchDeployment, remind } from './dispatch.js'
 
 const TABS = ['Deployment', 'In Revision', 'In Review Q/A']
 
@@ -27,7 +27,7 @@ function DeploymentTab({ deployment }) {
       <div className="tab-toolbar">
         <h1>Deployment plan — {deployDate ?? 'TBD'}</h1>
         <button onClick={handleDispatch} disabled={sending}>
-          {sending ? 'Sending…' : 'Dispatch to Slack'}
+          {sending ? 'Publishing…' : 'Publish'}
         </button>
       </div>
       {Object.entries(byClient).map(([client, tasks]) => (
@@ -54,14 +54,14 @@ function DeploymentTab({ deployment }) {
   )
 }
 
-function NudgeTab({ title, data, personKind }) {
+function RemindTab({ title, data, personKind }) {
   const { clients: byClient } = data
   const [sendingUrl, setSendingUrl] = useState(null)
 
-  async function handleNudge(task) {
+  async function handleRemind(task) {
     setSendingUrl(task.url)
     try {
-      await nudge(task, personKind)
+      await remind(task, personKind)
     } finally {
       setSendingUrl(null)
     }
@@ -87,8 +87,8 @@ function NudgeTab({ title, data, personKind }) {
                     </a>
                     {person ? ` — ${person.name}` : ''}
                   </span>
-                  <button onClick={() => handleNudge(task)} disabled={sendingUrl === task.url}>
-                    {sendingUrl === task.url ? 'Nudging…' : 'Nudge'}
+                  <button onClick={() => handleRemind(task)} disabled={sendingUrl === task.url}>
+                    {sendingUrl === task.url ? 'Reminding…' : 'Remind'}
                   </button>
                 </li>
               )
@@ -137,10 +137,10 @@ export default function App() {
         {!error && !data && <p>Loading…</p>}
         {data && tab === 'Deployment' && <DeploymentTab deployment={data.deployment} />}
         {data && tab === 'In Revision' && (
-          <NudgeTab title="In Revision" data={data.inRevision} personKind="assignee" />
+          <RemindTab title="In Revision" data={data.inRevision} personKind="assignee" />
         )}
         {data && tab === 'In Review Q/A' && (
-          <NudgeTab title="In Review Q/A" data={data.inReview} personKind="reviewer" />
+          <RemindTab title="In Review Q/A" data={data.inReview} personKind="reviewer" />
         )}
       </main>
     </>

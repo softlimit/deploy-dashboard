@@ -13,9 +13,9 @@ export async function dispatchDeployment(deployDate) {
   if (!res.ok) throw new Error(`dispatch-deployment failed: ${res.status}`)
 }
 
-export async function nudge(task, kind) {
+export async function remind(task, kind) {
   if (!TRIGGER_URL) {
-    alert('Trigger endpoint not configured yet — Nudge is not wired up.')
+    alert('Trigger endpoint not configured yet — Remind is not wired up.')
     return
   }
   const person = kind === 'reviewer' ? task.reviewer : task.assignee
