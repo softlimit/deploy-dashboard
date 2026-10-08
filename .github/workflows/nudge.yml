@@ -1,0 +1,23 @@
+name: Nudge
+
+on:
+  repository_dispatch:
+    types: [nudge]
+
+jobs:
+  send:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - run: node src/build/send-nudge.js
+        env:
+          SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
+          NUDGE_EMAIL: ${{ github.event.client_payload.email }}
+          NUDGE_NAME: ${{ github.event.client_payload.name }}
+          NUDGE_TASK_NAME: ${{ github.event.client_payload.taskName }}
+          NUDGE_TASK_URL: ${{ github.event.client_payload.taskUrl }}
+          NUDGE_CLIENT: ${{ github.event.client_payload.client }}
+          NUDGE_KIND: ${{ github.event.client_payload.kind }}
