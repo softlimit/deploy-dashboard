@@ -118,7 +118,7 @@ export default function App() {
   return (
     <>
       <header className="app-header">
-        <img src={`${import.meta.env.BASE_URL}softlimit-logo.png`} alt="Softlimit" />
+        <img src={`${import.meta.env.BASE_URL}softlimit-logo-dark.svg`} alt="Softlimit" />
         <span>Tasks Triage Dashboard</span>
       </header>
       <nav className="tab-nav">

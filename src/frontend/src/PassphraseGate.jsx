@@ -44,8 +44,7 @@ export default function PassphraseGate({ children }) {
     <div className="gate">
       <form className="gate-card" onSubmit={handleSubmit}>
         <h1>
-          <img src={`${import.meta.env.BASE_URL}softlimit-logo.png`} alt="Softlimit" />
-          Deploy Dashboard
+          <img src={`${import.meta.env.BASE_URL}softlimit-logo-dark.svg`} alt="Softlimit" />
         </h1>
         <p className="gate-disclosure">
           This is a basic deterrent, not real security — this page's code and data are both
