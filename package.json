@@ -1,0 +1,27 @@
+{
+  "name": "deploy-dashboard",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "inspect:view": "node src/scripts/inspect-view.js",
+    "build:data": "node src/build/build-data.js",
+    "format:slack": "node src/build/format-slack.js",
+    "dev": "vite src/frontend",
+    "build": "vite build src/frontend --outDir ../../dist",
+    "test": "vitest run"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {
+    "dotenv": "^16.4.5"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-react": "^4.3.1",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "vite": "^5.4.0",
+    "vitest": "^2.0.0"
+  }
+}

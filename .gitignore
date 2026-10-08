@@ -1,0 +1,6 @@
+node_modules/
+dist/
+.env
+data/raw-sample.json
+data/data.json
+src/frontend/public/data.json
