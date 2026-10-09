@@ -30,6 +30,8 @@ jobs:
           CLICKUP_API_TOKEN: ${{ secrets.CLICKUP_API_TOKEN }}
           CLICKUP_VIEW_ID: ${{ secrets.CLICKUP_VIEW_ID }}
       - run: npm run build
+        env:
+          VITE_TRIGGER_URL: https://deploy-dashboard-trigger.dev-a03.workers.dev
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with:

@@ -1,6 +1,34 @@
 import { useEffect, useState } from 'react'
 import { dispatchDeployment, remind } from './dispatch.js'
 
+const REMIND_COOLDOWN_MS = 24 * 60 * 60 * 1000
+const REMIND_STORAGE_PREFIX = 'remind-sent:'
+const PUBLISH_STORAGE_PREFIX = 'publish-sent:'
+
+function lastRemindTime(url) {
+  const v = localStorage.getItem(REMIND_STORAGE_PREFIX + url)
+  return v ? Number(v) : null
+}
+
+// Publish is only meant to go out once, Friday afternoon/night before the
+// Monday deploy (deploy date minus 3 days, local time >= noon).
+function isPublishWindowOpen(deployDateStr) {
+  if (!deployDateStr) return false
+  const deploy = new Date(`${deployDateStr}T00:00:00`)
+  const friday = new Date(deploy)
+  friday.setDate(friday.getDate() - 3)
+  const now = new Date()
+  const sameDay =
+    now.getFullYear() === friday.getFullYear() &&
+    now.getMonth() === friday.getMonth() &&
+    now.getDate() === friday.getDate()
+  return sameDay && now.getHours() >= 12
+}
+
+function alreadyPublished(deployDateStr) {
+  return localStorage.getItem(PUBLISH_STORAGE_PREFIX + deployDateStr) === 'true'
+}
+
 function statusLabel(task) {
   if (task.ready) {
     return task.deployType === 'post-deployment setup'
@@ -13,12 +41,16 @@ function statusLabel(task) {
 function TaskRow({ task }) {
   const { icon, label } = statusLabel(task)
   const [sending, setSending] = useState(false)
+  const [lastSent, setLastSent] = useState(() => lastRemindTime(task.url))
   const person = task.remindRole === 'reviewer' ? task.reviewer : task.assignee
+  const onCooldown = lastSent && Date.now() - lastSent < REMIND_COOLDOWN_MS
 
   async function handleRemind() {
     setSending(true)
     try {
       await remind(task, task.remindRole)
+      localStorage.setItem(REMIND_STORAGE_PREFIX + task.url, String(Date.now()))
+      setLastSent(Date.now())
     } finally {
       setSending(false)
     }
@@ -37,8 +69,8 @@ function TaskRow({ task }) {
         {person ? ` ${task.ready ? '@' : '— '}${person.name.split(' ')[0]}` : ''}
       </span>
       {task.remindRole && (
-        <button onClick={handleRemind} disabled={sending}>
-          {sending ? 'Reminding…' : 'Remind'}
+        <button onClick={handleRemind} disabled={sending || onCooldown}>
+          {sending ? 'Reminding…' : onCooldown ? 'Reminded' : 'Remind'}
         </button>
       )}
     </li>
@@ -64,20 +96,24 @@ export default function App() {
       .catch((err) => setError(err.message))
   }, [])
 
-  async function handlePublish() {
-    setPublishing(true)
-    try {
-      await dispatchDeployment(date)
-    } finally {
-      setPublishing(false)
-    }
-  }
-
   const scheduled = data ? data.tasks.filter((t) => t.deployDate === date) : []
   const byClient = {}
   for (const task of scheduled) {
     byClient[task.client] ??= []
     byClient[task.client].push(task)
+  }
+
+  const publishWindowOpen = isPublishWindowOpen(date)
+  const publishDone = date ? alreadyPublished(date) : false
+
+  async function handlePublish() {
+    setPublishing(true)
+    try {
+      await dispatchDeployment(date, byClient)
+      localStorage.setItem(PUBLISH_STORAGE_PREFIX + date, 'true')
+    } finally {
+      setPublishing(false)
+    }
   }
 
   return (
@@ -108,9 +144,19 @@ export default function App() {
                 Deployment date{' '}
                 <input type="date" value={date ?? ''} onChange={(e) => setDate(e.target.value)} />
               </label>
-              <button onClick={handlePublish} disabled={publishing}>
-                {publishing ? 'Publishing…' : 'Publish'}
-              </button>
+              <span className="publish-controls">
+                <button
+                  onClick={handlePublish}
+                  disabled={publishing || publishDone || !publishWindowOpen}
+                >
+                  {publishing ? 'Publishing…' : publishDone ? 'Published' : 'Publish'}
+                </button>
+                {!publishDone && !publishWindowOpen && (
+                  <span className="publish-hint">
+                    Opens Friday afternoon before this deploy date
+                  </span>
+                )}
+              </span>
             </div>
             {scheduled.length === 0 && <p>No tasks scheduled for this date.</p>}
             {Object.entries(byClient).map(([client, clientTasks]) => (

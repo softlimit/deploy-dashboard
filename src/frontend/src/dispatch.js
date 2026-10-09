@@ -1,14 +1,34 @@
 const TRIGGER_URL = import.meta.env.VITE_TRIGGER_URL
 
-export async function dispatchDeployment(deployDate) {
+function statusIcon(task) {
+  if (!task.ready) return ':hourglass_flowing_sand:'
+  return task.deployType === 'post-deployment setup' ? ':warning:' : ':white_check_mark:'
+}
+
+function buildDeploymentMessage(deployDate, byClient) {
+  const lines = [`:rocket: Deployment plan for ${deployDate ?? 'TBD'}`, '']
+  for (const [client, tasks] of Object.entries(byClient)) {
+    lines.push(`*${client}*`)
+    for (const task of tasks) {
+      const assignee = task.assignee ? ` @${task.assignee.name.split(' ')[0]}` : ''
+      const label = task.ready ? task.deployType : task.status
+      lines.push(`- ${task.name} — ${statusIcon(task)} ${label}${assignee}`)
+    }
+    lines.push('')
+  }
+  return lines.join('\n')
+}
+
+export async function dispatchDeployment(deployDate, byClient) {
   if (!TRIGGER_URL) {
     alert('Trigger endpoint not configured yet — Slack dispatch is not wired up.')
     return
   }
+  const text = buildDeploymentMessage(deployDate, byClient)
   const res = await fetch(`${TRIGGER_URL}/dispatch-deployment`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ deployDate }),
+    body: JSON.stringify({ text }),
   })
   if (!res.ok) throw new Error(`dispatch-deployment failed: ${res.status}`)
 }
