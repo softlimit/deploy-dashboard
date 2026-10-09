@@ -40,75 +40,54 @@ function deployDate(task) {
   return field?.value ? new Date(Number(field.value)).toISOString().slice(0, 10) : null
 }
 
+function remindRole(task) {
+  if (IN_REVISION_STATUSES.has(task.status.status)) return 'assignee'
+  if (IN_REVIEW_STATUSES.has(task.status.status)) return 'reviewer'
+  return null
+}
+
 // Deploys always land on Monday, so "next deployment" is always the
 // upcoming Monday (or today, if today is Monday) rather than whatever
 // happens to be the earliest date present in the ClickUp view.
 function nextMonday() {
   const now = new Date()
   const day = now.getUTCDay() // 0 = Sunday, 1 = Monday, ...
-  const daysUntilMonday = day === 1 ? 0 : ((8 - day) % 7)
+  const daysUntilMonday = day === 1 ? 0 : (8 - day) % 7
   now.setUTCDate(now.getUTCDate() + daysUntilMonday)
   return now.toISOString().slice(0, 10)
 }
 
-function baseTaskRecord(task) {
+function taskRecord(task) {
+  const ready = DEPLOY_STATUSES.has(task.status.status)
   return {
     name: task.name,
     url: task.url,
     client: clientLabel(task),
     status: task.status.status,
+    deployDate: deployDate(task),
+    ready,
+    deployType: ready ? deployType(task) : null,
+    remindRole: ready ? null : remindRole(task),
     assignee: assigneeInfo(task),
     reviewer: reviewerInfo(task),
   }
 }
 
-function groupByClient(tasks) {
-  const byClient = {}
-  for (const task of tasks) {
-    byClient[task.client] ??= []
-    byClient[task.client].push(task)
-  }
-  return byClient
-}
-
 const token = process.env.CLICKUP_API_TOKEN
 const deployViewId = process.env.CLICKUP_VIEW_ID
-const triageViewId = process.env.CLICKUP_TRIAGE_VIEW_ID
 
 if (!deployViewId || !token) {
   console.error('Set CLICKUP_VIEW_ID and CLICKUP_API_TOKEN in .env first.')
   process.exit(1)
 }
 
-const deployTasks = await fetchViewTasks(deployViewId, token)
+const rawTasks = await fetchViewTasks(deployViewId, token)
+const tasks = rawTasks.map(taskRecord)
 
-const targetDate = nextMonday()
-const scheduled = deployTasks.filter((t) => deployDate(t) === targetDate)
-const deployment = {
-  deployDate: targetDate,
-  clients: groupByClient(
-    scheduled.map((t) => ({
-      ...baseTaskRecord(t),
-      ready: DEPLOY_STATUSES.has(t.status.status),
-      deployType: deployType(t),
-    })),
-  ),
-}
+const availableDates = [...new Set(tasks.map((t) => t.deployDate).filter(Boolean))].sort()
+const defaultDate = nextMonday()
 
-// Falls back to the same deployment-view tasks (unfiltered by date) when no
-// broader triage view is configured, so the tabs still show real data.
-const triageTasks = triageViewId ? await fetchViewTasks(triageViewId, token) : deployTasks
-
-const revisionTasks = triageTasks.filter((t) => IN_REVISION_STATUSES.has(t.status.status))
-const reviewTasks = triageTasks.filter((t) => IN_REVIEW_STATUSES.has(t.status.status))
-const inRevision = { clients: groupByClient(revisionTasks.map(baseTaskRecord)) }
-const inReview = { clients: groupByClient(reviewTasks.map(baseTaskRecord)) }
-
-if (!triageViewId) {
-  console.warn('CLICKUP_TRIAGE_VIEW_ID not set - using CLICKUP_VIEW_ID tasks for triage tabs too.')
-}
-
-const output = { deployment, inRevision, inReview }
+const output = { defaultDate, availableDates, tasks }
 const json = JSON.stringify(output, null, 2)
 
 mkdirSync('data', { recursive: true })
@@ -117,8 +96,4 @@ writeFileSync('data/data.json', json)
 mkdirSync('src/frontend/public', { recursive: true })
 writeFileSync('src/frontend/public/data.json', json)
 
-console.log(
-  `Deployment: ${scheduled.length} tasks for ${targetDate}. In Revision: ${
-    Object.values(inRevision.clients).flat().length
-  }. In Review Q/A: ${Object.values(inReview.clients).flat().length}. -> data/data.json`,
-)
+console.log(`Fetched ${tasks.length} tasks across ${availableDates.length} deploy date(s) -> data/data.json`)

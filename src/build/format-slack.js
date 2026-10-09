@@ -1,13 +1,19 @@
 import { readFileSync } from 'fs'
 
-const { deployment } = JSON.parse(readFileSync('data/data.json', 'utf8'))
-const { deployDate, clients: byClient } = deployment
+const { defaultDate, tasks } = JSON.parse(readFileSync('data/data.json', 'utf8'))
+const scheduled = tasks.filter((t) => t.deployDate === defaultDate)
 
-const lines = [`:rocket: Deployment plan for ${deployDate ?? 'TBD'}`, '']
+const byClient = {}
+for (const task of scheduled) {
+  byClient[task.client] ??= []
+  byClient[task.client].push(task)
+}
 
-for (const [client, tasks] of Object.entries(byClient)) {
+const lines = [`:rocket: Deployment plan for ${defaultDate ?? 'TBD'}`, '']
+
+for (const [client, clientTasks] of Object.entries(byClient)) {
   lines.push(`*${client}*`)
-  for (const task of tasks) {
+  for (const task of clientTasks) {
     const assignee = task.assignee ? ` @${task.assignee.name.split(' ')[0]}` : ''
     const icon = !task.ready
       ? ':hourglass_flowing_sand:'
