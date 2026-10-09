@@ -52,7 +52,7 @@ export default function App() {
   const [publishing, setPublishing] = useState(false)
 
   useEffect(() => {
-    fetch(`${import.meta.env.BASE_URL}data.json`)
+    fetch(`${import.meta.env.BASE_URL}data.json?t=${Date.now()}`, { cache: 'no-store' })
       .then((res) => {
         if (!res.ok) throw new Error(`data.json: ${res.status}`)
         return res.json()
