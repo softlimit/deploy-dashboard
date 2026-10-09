@@ -1,6 +1,6 @@
 import { readFileSync } from 'fs'
 
-const { defaultDate, tasks } = JSON.parse(readFileSync('data/data.json', 'utf8'))
+const { defaultDate, viewUrl, tasks } = JSON.parse(readFileSync('data/data.json', 'utf8'))
 const scheduled = tasks.filter((t) => t.deployDate === defaultDate)
 
 const byClient = {}
@@ -9,7 +9,8 @@ for (const task of scheduled) {
   byClient[task.client].push(task)
 }
 
-const lines = [`:rocket: Deployment plan for ${defaultDate ?? 'TBD'}`, '']
+const titleLink = viewUrl ? ` - ${viewUrl}` : ''
+const lines = [`:rocket: Deployment plan for ${defaultDate ?? 'TBD'}${titleLink}`, '']
 
 for (const [client, clientTasks] of Object.entries(byClient)) {
   lines.push(`*${client}*`)

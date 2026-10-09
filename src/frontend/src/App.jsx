@@ -161,7 +161,7 @@ export default function App() {
     }
     setPublishing(true)
     try {
-      const sent = await dispatchDeployment(date, fullByClient)
+      const sent = await dispatchDeployment(date, fullByClient, data.viewUrl)
       if (sent) localStorage.setItem(PUBLISH_STORAGE_PREFIX + date, 'true')
     } finally {
       setPublishing(false)

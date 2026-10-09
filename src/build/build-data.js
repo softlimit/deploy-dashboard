@@ -99,8 +99,10 @@ const tasks = rawTasks.map(taskRecord)
 
 const availableDates = [...new Set(tasks.map((t) => t.deployDate).filter(Boolean))].sort()
 const defaultDate = nextMonday()
+const teamId = rawTasks[0]?.team_id
+const viewUrl = teamId ? `https://app.clickup.com/${teamId}/v/l/${deployViewId}` : null
 
-const output = { defaultDate, availableDates, tasks }
+const output = { defaultDate, availableDates, viewUrl, tasks }
 const json = JSON.stringify(output, null, 2)
 
 mkdirSync('data', { recursive: true })

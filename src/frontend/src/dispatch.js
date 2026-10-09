@@ -1,7 +1,8 @@
 const TRIGGER_URL = import.meta.env.VITE_TRIGGER_URL
 
-function buildDeploymentMessage(deployDate, byClient) {
-  const lines = [`:rocket: Deployment plan for ${deployDate ?? 'TBD'}`, '']
+function buildDeploymentMessage(deployDate, byClient, viewUrl) {
+  const titleLink = viewUrl ? ` - ${viewUrl}` : ''
+  const lines = [`:rocket: Deployment plan for ${deployDate ?? 'TBD'}${titleLink}`, '']
   for (const [client, tasks] of Object.entries(byClient)) {
     lines.push(`*${client}*`)
     for (const task of tasks) {
@@ -25,12 +26,12 @@ export async function triggerClickUpRefresh() {
   return res.ok
 }
 
-export async function dispatchDeployment(deployDate, byClient) {
+export async function dispatchDeployment(deployDate, byClient, viewUrl) {
   if (!TRIGGER_URL) {
     alert('Trigger endpoint not configured yet — Slack dispatch is not wired up.')
     return false
   }
-  const text = buildDeploymentMessage(deployDate, byClient)
+  const text = buildDeploymentMessage(deployDate, byClient, viewUrl)
   const res = await fetch(`${TRIGGER_URL}/dispatch-deployment`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
