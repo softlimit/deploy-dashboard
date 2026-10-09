@@ -1,18 +1,17 @@
 const TRIGGER_URL = import.meta.env.VITE_TRIGGER_URL
 
-function statusIcon(task) {
-  if (!task.ready) return ':hourglass_flowing_sand:'
-  return task.deployType === 'post-deployment setup' ? ':warning:' : ':white_check_mark:'
-}
-
 function buildDeploymentMessage(deployDate, byClient) {
   const lines = [`:rocket: Deployment plan for ${deployDate ?? 'TBD'}`, '']
   for (const [client, tasks] of Object.entries(byClient)) {
     lines.push(`*${client}*`)
     for (const task of tasks) {
-      const assignee = task.assignee ? ` @${task.assignee.name.split(' ')[0]}` : ''
-      const label = task.ready ? task.deployType : task.status
-      lines.push(`- ${task.name} — ${statusIcon(task)} ${label}${assignee}`)
+      const link = `<${task.url}|${task.name}>`
+      if (task.needsPostDeploySetup) {
+        const assignee = task.assignee ? ` @${task.assignee.name.split(' ')[0]}` : ''
+        lines.push(`- ${link} — :warning: post-deployment setup${assignee}`)
+      } else {
+        lines.push(`- ${link} — :white_check_mark: no post-deployment setup required`)
+      }
     }
     lines.push('')
   }

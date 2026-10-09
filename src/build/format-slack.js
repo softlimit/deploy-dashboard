@@ -14,14 +14,13 @@ const lines = [`:rocket: Deployment plan for ${defaultDate ?? 'TBD'}`, '']
 for (const [client, clientTasks] of Object.entries(byClient)) {
   lines.push(`*${client}*`)
   for (const task of clientTasks) {
-    const assignee = task.assignee ? ` @${task.assignee.name.split(' ')[0]}` : ''
-    const icon = !task.ready
-      ? ':hourglass_flowing_sand:'
-      : task.deployType === 'post-deployment setup'
-        ? ':warning:'
-        : ':white_check_mark:'
-    const label = task.ready ? task.deployType : task.status
-    lines.push(`- ${task.name} — ${icon} ${label}${assignee}`)
+    const link = `<${task.url}|${task.name}>`
+    if (task.needsPostDeploySetup) {
+      const assignee = task.assignee ? ` @${task.assignee.name.split(' ')[0]}` : ''
+      lines.push(`- ${link} — :warning: post-deployment setup${assignee}`)
+    } else {
+      lines.push(`- ${link} — :white_check_mark: no post-deployment setup required`)
+    }
   }
   lines.push('')
 }

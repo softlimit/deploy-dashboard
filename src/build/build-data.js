@@ -19,10 +19,12 @@ function hasPostDeploySetupTag(task) {
   return (task.tags || []).some((tag) => tag.name === POST_DEPLOY_SETUP_TAG)
 }
 
+function needsPostDeploySetup(task) {
+  return task.status.status === 'post deploy setup' || hasPostDeploySetupTag(task)
+}
+
 function deployType(task) {
-  if (task.status.status === 'post deploy setup' || hasPostDeploySetupTag(task)) {
-    return 'post-deployment setup'
-  }
+  if (needsPostDeploySetup(task)) return 'post-deployment setup'
   if (task.status.status === 'ready for deploy') return 'no post-deployment setup required'
   return null
 }
@@ -77,6 +79,7 @@ function taskRecord(task) {
     ready,
     deployed,
     deployType: ready ? deployType(task) : null,
+    needsPostDeploySetup: needsPostDeploySetup(task),
     remindRole: ready || deployed ? null : remindRole(task),
     assignee: assigneeInfo(task),
     reviewer: reviewerInfo(task),
