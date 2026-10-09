@@ -128,16 +128,12 @@ export default function App() {
 
   const scheduled = data ? data.tasks.filter((t) => t.deployDate === date) : []
   const clientOptions = [...new Set(scheduled.map((t) => t.client))].sort()
-
-  function matchesStatusFilter(task) {
-    if (statusFilter === 'ready') return task.ready
-    if (statusFilter === 'pending') return !task.ready && !task.deployed
-    if (statusFilter === 'deployed') return task.deployed
-    return true
-  }
+  const statusOptions = [...new Set(scheduled.map((t) => t.status))].sort()
 
   const filtered = scheduled.filter(
-    (t) => (clientFilter === 'all' || t.client === clientFilter) && matchesStatusFilter(t),
+    (t) =>
+      (clientFilter === 'all' || t.client === clientFilter) &&
+      (statusFilter === 'all' || t.status === statusFilter),
   )
 
   const byClient = {}
@@ -208,9 +204,11 @@ export default function App() {
                   Status{' '}
                   <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}>
                     <option value="all">All statuses</option>
-                    <option value="ready">Ready to deploy</option>
-                    <option value="pending">In revision / review</option>
-                    <option value="deployed">Deployed</option>
+                    {statusOptions.map((s) => (
+                      <option key={s} value={s}>
+                        {s}
+                      </option>
+                    ))}
                   </select>
                 </label>
               </span>
