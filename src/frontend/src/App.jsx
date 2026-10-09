@@ -95,19 +95,34 @@ export default function App() {
   const [error, setError] = useState(null)
   const [date, setDate] = useState(null)
   const [publishing, setPublishing] = useState(false)
+  const [refreshing, setRefreshing] = useState(false)
 
-  useEffect(() => {
-    fetch(`${import.meta.env.BASE_URL}data.json?t=${Date.now()}`, { cache: 'no-store' })
+  function loadData() {
+    return fetch(`${import.meta.env.BASE_URL}data.json?t=${Date.now()}`, { cache: 'no-store' })
       .then((res) => {
         if (!res.ok) throw new Error(`data.json: ${res.status}`)
         return res.json()
       })
       .then((json) => {
         setData(json)
-        setDate(json.defaultDate)
+        setDate((prev) => prev ?? json.defaultDate)
+        setError(null)
       })
       .catch((err) => setError(err.message))
+  }
+
+  useEffect(() => {
+    loadData()
   }, [])
+
+  async function handleRefresh() {
+    setRefreshing(true)
+    try {
+      await loadData()
+    } finally {
+      setRefreshing(false)
+    }
+  }
 
   const scheduled = data ? data.tasks.filter((t) => t.deployDate === date) : []
   const byClient = {}
@@ -158,6 +173,9 @@ export default function App() {
                 <input type="date" value={date ?? ''} onChange={(e) => setDate(e.target.value)} />
               </label>
               <span className="publish-controls">
+                <button onClick={handleRefresh} disabled={refreshing}>
+                  {refreshing ? 'Refreshing…' : 'Refresh'}
+                </button>
                 <button
                   onClick={handlePublish}
                   disabled={publishing || publishDone || !publishWindowOpen}
