@@ -117,11 +117,31 @@ button:disabled {
   justify-content: space-between;
   gap: 16px;
   margin-bottom: 20px;
+  flex-wrap: wrap;
 }
 
 .tab-toolbar label {
   font-size: 13px;
   color: var(--text-soft);
+}
+
+.filters {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.tab-toolbar select {
+  height: 2.25rem;
+  padding: 0 0.6rem;
+  margin-left: 6px;
+  font: inherit;
+  font-size: 0.875rem;
+  color: var(--ink);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
 }
 
 .publish-controls {

@@ -96,6 +96,8 @@ export default function App() {
   const [date, setDate] = useState(null)
   const [publishing, setPublishing] = useState(false)
   const [refreshing, setRefreshing] = useState(false)
+  const [clientFilter, setClientFilter] = useState('all')
+  const [statusFilter, setStatusFilter] = useState('all')
 
   function loadData() {
     return fetch(`${import.meta.env.BASE_URL}data.json?t=${Date.now()}`, { cache: 'no-store' })
@@ -125,8 +127,21 @@ export default function App() {
   }
 
   const scheduled = data ? data.tasks.filter((t) => t.deployDate === date) : []
+  const clientOptions = [...new Set(scheduled.map((t) => t.client))].sort()
+
+  function matchesStatusFilter(task) {
+    if (statusFilter === 'ready') return task.ready
+    if (statusFilter === 'pending') return !task.ready && !task.deployed
+    if (statusFilter === 'deployed') return task.deployed
+    return true
+  }
+
+  const filtered = scheduled.filter(
+    (t) => (clientFilter === 'all' || t.client === clientFilter) && matchesStatusFilter(t),
+  )
+
   const byClient = {}
-  for (const task of scheduled) {
+  for (const task of filtered) {
     byClient[task.client] ??= []
     byClient[task.client].push(task)
   }
@@ -135,9 +150,14 @@ export default function App() {
   const publishDone = date ? alreadyPublished(date) : false
 
   async function handlePublish() {
+    const fullByClient = {}
+    for (const task of scheduled) {
+      fullByClient[task.client] ??= []
+      fullByClient[task.client].push(task)
+    }
     setPublishing(true)
     try {
-      await dispatchDeployment(date, byClient)
+      await dispatchDeployment(date, fullByClient)
       localStorage.setItem(PUBLISH_STORAGE_PREFIX + date, 'true')
     } finally {
       setPublishing(false)
@@ -164,14 +184,36 @@ export default function App() {
               client, with one-click Slack follow-ups.
             </p>
             <p className="entry-count">
-              Showing {scheduled.length} tasks across {Object.keys(byClient).length} clients for{' '}
-              {date}
+              Showing {filtered.length} of {scheduled.length} tasks across{' '}
+              {Object.keys(byClient).length} clients for {date}
             </p>
             <div className="tab-toolbar">
-              <label>
-                Deployment date{' '}
-                <input type="date" value={date ?? ''} onChange={(e) => setDate(e.target.value)} />
-              </label>
+              <span className="filters">
+                <label>
+                  Deployment date{' '}
+                  <input type="date" value={date ?? ''} onChange={(e) => setDate(e.target.value)} />
+                </label>
+                <label>
+                  Client{' '}
+                  <select value={clientFilter} onChange={(e) => setClientFilter(e.target.value)}>
+                    <option value="all">All clients</option>
+                    {clientOptions.map((c) => (
+                      <option key={c} value={c}>
+                        {c}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <label>
+                  Status{' '}
+                  <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}>
+                    <option value="all">All statuses</option>
+                    <option value="ready">Ready to deploy</option>
+                    <option value="pending">In revision / review</option>
+                    <option value="deployed">Deployed</option>
+                  </select>
+                </label>
+              </span>
               <span className="publish-controls">
                 <button onClick={handleRefresh} disabled={refreshing}>
                   {refreshing ? 'Refreshing…' : 'Refresh'}
