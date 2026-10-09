@@ -10,19 +10,32 @@ function lastRemindTime(url) {
   return v ? Number(v) : null
 }
 
+// "Noon" is evaluated in US Eastern time regardless of the viewer's own
+// timezone, so the window is consistent no matter who opens the page.
+function nowInEastern() {
+  const parts = new Intl.DateTimeFormat('en-US', {
+    timeZone: 'America/New_York',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    hour12: false,
+  }).formatToParts(new Date())
+  const get = (type) => Number(parts.find((p) => p.type === type).value)
+  const hour = get('hour')
+  return { year: get('year'), month: get('month'), day: get('day'), hour: hour === 24 ? 0 : hour }
+}
+
 // Publish is only meant to go out once, Friday afternoon/night before the
-// Monday deploy (deploy date minus 3 days, local time >= noon).
+// Monday deploy (deploy date minus 3 days, Eastern time >= noon).
 function isPublishWindowOpen(deployDateStr) {
   if (!deployDateStr) return false
   const deploy = new Date(`${deployDateStr}T00:00:00`)
   const friday = new Date(deploy)
   friday.setDate(friday.getDate() - 3)
-  const now = new Date()
-  const sameDay =
-    now.getFullYear() === friday.getFullYear() &&
-    now.getMonth() === friday.getMonth() &&
-    now.getDate() === friday.getDate()
-  return sameDay && now.getHours() >= 12
+  const { year, month, day, hour } = nowInEastern()
+  const sameDay = year === friday.getFullYear() && month === friday.getMonth() + 1 && day === friday.getDate()
+  return sameDay && hour >= 12
 }
 
 function alreadyPublished(deployDateStr) {
