@@ -41,10 +41,12 @@ a {
 
 header.app-header {
   display: flex;
-  flex-direction: column;
+  flex-direction: row;
   align-items: center;
-  justify-content: center;
-  gap: 8px;
+  justify-content: flex-start;
+  gap: 16px;
+  max-width: 900px;
+  margin: 0 auto;
   padding: 24px 24px 16px;
 }
 
