@@ -4,3 +4,4 @@ dist/
 data/raw-sample.json
 data/data.json
 src/frontend/public/data.json
+worker/.wrangler/
