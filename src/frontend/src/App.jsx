@@ -61,9 +61,11 @@ function TaskRow({ task }) {
   async function handleRemind() {
     setSending(true)
     try {
-      await remind(task, task.remindRole)
-      localStorage.setItem(REMIND_STORAGE_PREFIX + task.url, String(Date.now()))
-      setLastSent(Date.now())
+      const sent = await remind(task, task.remindRole)
+      if (sent) {
+        localStorage.setItem(REMIND_STORAGE_PREFIX + task.url, String(Date.now()))
+        setLastSent(Date.now())
+      }
     } finally {
       setSending(false)
     }
@@ -153,8 +155,8 @@ export default function App() {
     }
     setPublishing(true)
     try {
-      await dispatchDeployment(date, fullByClient)
-      localStorage.setItem(PUBLISH_STORAGE_PREFIX + date, 'true')
+      const sent = await dispatchDeployment(date, fullByClient)
+      if (sent) localStorage.setItem(PUBLISH_STORAGE_PREFIX + date, 'true')
     } finally {
       setPublishing(false)
     }

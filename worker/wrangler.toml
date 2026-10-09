@@ -1,3 +1,7 @@
 name = "deploy-dashboard-trigger"
 main = "index.js"
 compatibility_date = "2026-01-01"
+
+[[kv_namespaces]]
+binding = "GUARD_KV"
+id = "4d473ede61484b29abb66418c9e460f8"

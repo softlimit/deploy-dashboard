@@ -8,9 +8,18 @@ function withCors(res) {
   return res
 }
 
+const REMIND_COOLDOWN_SECONDS = 24 * 60 * 60
+
 async function dispatchDeployment(request, env) {
-  const { text } = await request.json()
+  const { text, deployDate } = await request.json()
   if (!text) return withCors(new Response('Missing text', { status: 400 }))
+
+  if (deployDate) {
+    const guardKey = `publish:${deployDate}`
+    if (await env.GUARD_KV.get(guardKey)) {
+      return withCors(new Response('Already published for this date', { status: 409 }))
+    }
+  }
 
   const res = await fetch(env.SLACK_WEBHOOK_URL, {
     method: 'POST',
@@ -18,12 +27,21 @@ async function dispatchDeployment(request, env) {
     body: JSON.stringify({ text }),
   })
   if (!res.ok) return withCors(new Response(`Slack webhook failed: ${res.status}`, { status: 502 }))
+
+  if (deployDate) await env.GUARD_KV.put(`publish:${deployDate}`, String(Date.now()))
   return withCors(new Response('ok'))
 }
 
 async function nudge(request, env) {
   const payload = await request.json()
-  if (!payload.email) return withCors(new Response('Missing email', { status: 400 }))
+  if (!payload.email || !payload.taskUrl) {
+    return withCors(new Response('Missing email or taskUrl', { status: 400 }))
+  }
+
+  const guardKey = `remind:${payload.taskUrl}`
+  if (await env.GUARD_KV.get(guardKey)) {
+    return withCors(new Response('Already reminded for this task in the last 24h', { status: 429 }))
+  }
 
   const res = await fetch(`https://api.github.com/repos/${GITHUB_REPO}/dispatches`, {
     method: 'POST',
@@ -39,6 +57,8 @@ async function nudge(request, env) {
     const body = await res.text()
     return withCors(new Response(`GitHub dispatch failed: ${res.status} ${body}`, { status: 502 }))
   }
+
+  await env.GUARD_KV.put(guardKey, String(Date.now()), { expirationTtl: REMIND_COOLDOWN_SECONDS })
   return withCors(new Response('ok'))
 }
 

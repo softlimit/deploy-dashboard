@@ -22,26 +22,31 @@ function buildDeploymentMessage(deployDate, byClient) {
 export async function dispatchDeployment(deployDate, byClient) {
   if (!TRIGGER_URL) {
     alert('Trigger endpoint not configured yet — Slack dispatch is not wired up.')
-    return
+    return false
   }
   const text = buildDeploymentMessage(deployDate, byClient)
   const res = await fetch(`${TRIGGER_URL}/dispatch-deployment`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ text }),
+    body: JSON.stringify({ text, deployDate }),
   })
+  if (res.status === 409) {
+    alert('Already published for this deploy date (checked server-side).')
+    return false
+  }
   if (!res.ok) throw new Error(`dispatch-deployment failed: ${res.status}`)
+  return true
 }
 
 export async function remind(task, kind) {
   if (!TRIGGER_URL) {
     alert('Trigger endpoint not configured yet — Remind is not wired up.')
-    return
+    return false
   }
   const person = kind === 'reviewer' ? task.reviewer : task.assignee
   if (!person?.email) {
     alert(`No ${kind} email found for this task.`)
-    return
+    return false
   }
   const res = await fetch(`${TRIGGER_URL}/nudge`, {
     method: 'POST',
@@ -55,5 +60,10 @@ export async function remind(task, kind) {
       name: person.name,
     }),
   })
+  if (res.status === 429) {
+    alert('Already reminded for this task in the last 24h (checked server-side).')
+    return false
+  }
   if (!res.ok) throw new Error(`nudge failed: ${res.status}`)
+  return true
 }
