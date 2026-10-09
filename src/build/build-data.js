@@ -13,8 +13,16 @@ function clientLabel(task) {
   return options.find((o) => o.id === selectedId)?.label || 'UNKNOWN'
 }
 
+const POST_DEPLOY_SETUP_TAG = 'post-deploy set up required'
+
+function hasPostDeploySetupTag(task) {
+  return (task.tags || []).some((tag) => tag.name === POST_DEPLOY_SETUP_TAG)
+}
+
 function deployType(task) {
-  if (task.status.status === 'post deploy setup') return 'post-deployment setup'
+  if (task.status.status === 'post deploy setup' || hasPostDeploySetupTag(task)) {
+    return 'post-deployment setup'
+  }
   if (task.status.status === 'ready for deploy') return 'no post-deployment setup required'
   return null
 }
