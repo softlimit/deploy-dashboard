@@ -1,24 +1,5 @@
 const TRIGGER_URL = import.meta.env.VITE_TRIGGER_URL
 
-function buildDeploymentMessage(deployDate, byClient, viewUrl) {
-  const titleLink = viewUrl ? ` - ${viewUrl}` : ''
-  const lines = [`:rocket: Deployment plan for ${deployDate ?? 'TBD'}${titleLink}`, '']
-  for (const [client, tasks] of Object.entries(byClient)) {
-    lines.push(`*${client}*`)
-    for (const task of tasks) {
-      const link = `<${task.url}|${task.name}>`
-      if (task.needsPostDeploySetup) {
-        const assignee = task.assignee ? ` @${task.assignee.name.split(' ')[0]}` : ''
-        lines.push(`- ${link} — :warning: post-deployment setup${assignee}`)
-      } else {
-        lines.push(`- ${link} — :white_check_mark: no post-deployment setup required`)
-      }
-    }
-    lines.push('')
-  }
-  return lines.join('\n')
-}
-
 export async function triggerClickUpRefresh() {
   if (!TRIGGER_URL) return false
   const res = await fetch(`${TRIGGER_URL}/refresh`, { method: 'POST' })
@@ -31,11 +12,10 @@ export async function dispatchDeployment(deployDate, byClient, viewUrl) {
     alert('Trigger endpoint not configured yet — Slack dispatch is not wired up.')
     return false
   }
-  const text = buildDeploymentMessage(deployDate, byClient, viewUrl)
   const res = await fetch(`${TRIGGER_URL}/dispatch-deployment`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ text, deployDate }),
+    body: JSON.stringify({ deployDate, viewUrl, byClient }),
   })
   if (res.status === 409) {
     alert('Already published for this deploy date (checked server-side).')

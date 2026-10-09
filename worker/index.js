@@ -41,24 +41,23 @@ async function refresh(request, env) {
 }
 
 async function dispatchDeployment(request, env) {
-  const { text, deployDate } = await request.json()
-  if (!text) return withCors(new Response('Missing text', { status: 400 }))
-
-  if (deployDate) {
-    const guardKey = `publish:${deployDate}`
-    if (await env.GUARD_KV.get(guardKey)) {
-      return withCors(new Response('Already published for this date', { status: 409 }))
-    }
+  const { deployDate, viewUrl, byClient } = await request.json()
+  if (!deployDate || !byClient) {
+    return withCors(new Response('Missing deployDate or byClient', { status: 400 }))
   }
 
-  const res = await fetch(env.SLACK_WEBHOOK_URL, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ text }),
-  })
-  if (!res.ok) return withCors(new Response(`Slack webhook failed: ${res.status}`, { status: 502 }))
+  const guardKey = `publish:${deployDate}`
+  if (await env.GUARD_KV.get(guardKey)) {
+    return withCors(new Response('Already published for this date', { status: 409 }))
+  }
 
-  if (deployDate) await env.GUARD_KV.put(`publish:${deployDate}`, String(Date.now()))
+  const res = await triggerGithubDispatch('publish', { deployDate, viewUrl, byClient }, env)
+  if (!res.ok) {
+    const body = await res.text()
+    return withCors(new Response(`GitHub dispatch failed: ${res.status} ${body}`, { status: 502 }))
+  }
+
+  await env.GUARD_KV.put(guardKey, String(Date.now()))
   return withCors(new Response('ok'))
 }
 
