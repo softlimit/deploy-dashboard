@@ -1,52 +1,115 @@
-# Deploy Dashboard
+# Deployment Dashboard
 
-Automates the weekly deployment plan that used to be copied by hand from a
-ClickUp view into Slack. Architecture is adapted from
-[`bugherd-triage`](https://github.com/softlimit/bugherd-triage): a scheduled
-pull from the source API, a build step that shapes the data, and a static
-report published from the result. No Claude-escalation/dedup step here —
-ClickUp task data is already clean, there's just a formatting step.
+Replaces the weekly deployment plan that used to be copied by hand from a
+ClickUp view into Slack. Live at:
 
-## Status: schema discovery
+**https://softlimit.github.io/deploy-dashboard/**
 
-Before the build/format/frontend pieces can be finished, we need to see what
-a real ClickUp task in the deploy view actually looks like — specifically
-which fields carry:
+## What it does
 
-- client/list name (e.g. `BIO`, `DRAKE`)
-- the task title as it appears in the Slack message (e.g. `[UI Ext] Bioelements — verify <64kb`)
-- deploy type: `:warning: app deployment`, `:warning: post-deployment setup`, or `:white_check_mark: no post-deployment setup required`
-- the assignee shown as `@Renan` / `@Jahiker` / `@Celso` for warning rows
+Every Monday's deploy batch (and the surrounding revision/review work) lives
+in one ClickUp view. This dashboard:
 
-These are very likely ClickUp custom fields (dropdown + assignee), not
-built-in task properties, so field IDs need to come from a live API call
-rather than guessing.
+1. Pulls that view's tasks via the ClickUp API
+2. Groups them by client, labels each by deploy readiness (ready to deploy,
+   needs post-deployment setup, still in revision/review, or already
+   deployed — color-coded yellow/pink/green on the page)
+3. Lets you **Publish** the deployment plan to the dev Slack channel with
+   one click, and **Remind** an individual task's assignee or reviewer via a
+   direct Slack DM
+4. Rebuilds automatically on a schedule (weekdays) and on-demand via the
+   page's **Refresh** button
 
-### Run the inspection script
+## Architecture
+
+```
+ClickUp API
+   │
+   ▼
+GitHub Actions (refresh-and-deploy.yml)
+   │  npm run build:data → data/data.json
+   │  npm run build      → static React dashboard
+   ▼
+GitHub Pages (softlimit.github.io/deploy-dashboard)
+   │
+   │  Publish / Remind / Refresh button clicks
+   ▼
+Cloudflare Worker (deploy-dashboard-trigger)
+   │  holds the Slack webhook + a GitHub token, never exposed to the browser
+   ├─→ Slack Incoming Webhook (Publish → dev channel)
+   └─→ GitHub repository_dispatch → Actions workflow (Remind DM / forced refresh)
+            │
+            ▼
+       Slack Bot API (chat.postMessage as a real 1:1 DM)
+```
+
+The dashboard itself is a static site (Vite/React) — it has no backend of
+its own. Anything that needs a secret (ClickUp token, Slack webhook, Slack
+bot token, GitHub token) goes through either GitHub Actions secrets or the
+Cloudflare Worker's secrets, never into the client bundle.
+
+### Why a Worker at all?
+
+A static GitHub Pages site can't safely hold the Slack webhook URL or make
+authenticated GitHub API calls client-side. The Worker is a thin, public
+endpoint whose *only* job is to relay two things:
+
+- **Publish** → posts directly to the Slack webhook (holds `SLACK_WEBHOOK_URL`)
+- **Remind** / **Refresh** → fires a `repository_dispatch` event on this repo
+  using a narrowly-scoped GitHub token, which the matching GitHub Actions
+  workflow picks up and executes (DM send or ClickUp re-pull) using secrets
+  that live only in GitHub, never in the Worker or the browser
+
+### Guards
+
+- **Remind**: once per task per 24h, enforced server-side via Cloudflare KV
+  (not just browser `localStorage` — works across devices/browsers)
+- **Publish**: only enabled Friday afternoon/evening (≥ noon US Eastern)
+  before the Monday deploy, and only once per deploy date — also enforced
+  via KV, not just the UI
+- **Refresh** (re-pulling ClickUp): capped to once per 2 minutes to avoid
+  hammering the Actions workflow
+
+## Repo layout
+
+```
+src/
+  api/clickupClient.js       ClickUp "get view tasks" API wrapper
+  build/build-data.js        fetch + shape ClickUp data -> data/data.json
+  build/format-slack.js      CLI preview of the Publish Slack message
+  build/send-nudge.js        sends one Remind DM (run inside the nudge.yml workflow)
+  frontend/                  the Vite/React dashboard (App.jsx, dispatch.js, style.css)
+worker/
+  index.js                   Cloudflare Worker: /dispatch-deployment, /nudge, /refresh
+  wrangler.toml
+.github/workflows/
+  refresh-and-deploy.yml     fetch ClickUp, build, deploy to Pages (schedule/push/manual/repository_dispatch)
+  nudge.yml                  sends a Remind DM (repository_dispatch: nudge)
+```
+
+## Local development
 
 ```
 npm install
 cp .env.example .env
-# fill in CLICKUP_API_TOKEN (personal token from ClickUp > Settings > Apps)
-# CLICKUP_VIEW_ID is pre-filled from the "next deployment" view URL
-npm run inspect:view
+# fill in CLICKUP_API_TOKEN (ClickUp > Settings > Apps) and CLICKUP_VIEW_ID
+npm run build:data   # pulls live ClickUp data -> data/data.json
+npm run dev          # Vite dev server
+npm run format:slack # preview the Publish message in the terminal
 ```
 
-This writes `data/raw-sample.json` (gitignored — may contain client task
-details) and prints the custom field structure of the first task. Once we've
-seen that shape, `src/build/build-data.js` and the Slack formatter can be
-written against real field IDs instead of guesses.
+Deploying changes to the live site is just `git push` to `main` — the
+GitHub Actions workflow handles rebuild + Pages deploy. Changes to
+`worker/index.js` need a separate `cd worker && npx wrangler deploy`.
 
-## Planned pieces (not yet built)
+## Known trade-offs (worth revisiting)
 
-- `src/build/build-data.js` — fetch view, group by client, shape into
-  `data.json` for the frontend.
-- `src/build/format-slack.js` — render the same grouped data as the
-  `:rocket: Deployment plan for <date>` Slack message, optionally posting via
-  `SLACK_WEBHOOK_URL` instead of copy/paste.
-- `src/frontend/` — static dashboard (Vite/React) showing the current
-  deploy plan and status, published to GitHub Pages.
-- GitHub Actions workflow — scheduled refresh + Pages publish, same pattern
-  as `bugherd-triage`'s `refresh-and-deploy.yml`.
-- Optional Cloudflare Worker for an on-demand "Refresh now" button, same
-  pattern as `bugherd-triage/worker/`.
+- The Worker's GitHub token is currently a broad personal `gh auth token`
+  rather than a narrowly-scoped, repo-specific PAT — fine for now, but
+  should be swapped before this becomes a daily-use tool for the whole team.
+- The ClickUp → client-code mapping (`CLIENT` custom field) and the
+  post-deploy-setup detection (`post deploy setup` status OR the
+  `post-deploy set up required` tag) are specific to how the team currently
+  tags tasks; if that convention changes, `src/build/build-data.js` needs a
+  matching update.
+- No automated tests yet.
