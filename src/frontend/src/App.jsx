@@ -24,8 +24,10 @@ function TaskRow({ task }) {
     }
   }
 
+  const rowClass = task.deployed ? 'deployed' : task.ready ? 'ready' : task.remindRole ? 'pending' : ''
+
   return (
-    <li className="task-row">
+    <li className={`task-row ${rowClass}`}>
       <span>
         <a href={task.url} target="_blank" rel="noreferrer">
           {task.name}
@@ -82,7 +84,7 @@ export default function App() {
     <>
       <header className="app-header">
         <img src={`${import.meta.env.BASE_URL}softlimit-logo-dark.svg`} alt="Softlimit" />
-        <span>Tasks Triage Dashboard</span>
+        <span>Deployment Dashboard</span>
       </header>
       <main>
         {error && (

@@ -49,19 +49,19 @@ header.app-header {
 }
 
 header.app-header img {
-  width: 120px;
+  width: 200px;
   height: auto;
 }
 
 header.app-header span {
-  font-size: 15px;
-  font-weight: 600;
+  font-size: 22px;
+  font-weight: 700;
   letter-spacing: 0.02em;
-  color: var(--muted);
+  color: var(--ink);
 }
 
 main {
-  max-width: 720px;
+  max-width: 900px;
   margin: 0 auto;
   padding: 24px;
 }
@@ -126,6 +126,22 @@ button:disabled {
   align-items: center;
   justify-content: space-between;
   gap: 12px;
+  padding: 10px 12px;
+  margin: 6px 0;
+  border-radius: 8px;
+  border-bottom: none;
+}
+
+.task-row.ready {
+  background: #fff6d8;
+}
+
+.task-row.pending {
+  background: #fde7ea;
+}
+
+.task-row.deployed {
+  background: #e1f5e6;
 }
 
 h1 {

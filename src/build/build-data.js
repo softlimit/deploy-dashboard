@@ -59,6 +59,7 @@ function nextMonday() {
 
 function taskRecord(task) {
   const ready = DEPLOY_STATUSES.has(task.status.status)
+  const deployed = task.status.status === 'deployed'
   return {
     name: task.name,
     url: task.url,
@@ -66,8 +67,9 @@ function taskRecord(task) {
     status: task.status.status,
     deployDate: deployDate(task),
     ready,
+    deployed,
     deployType: ready ? deployType(task) : null,
-    remindRole: ready ? null : remindRole(task),
+    remindRole: ready || deployed ? null : remindRole(task),
     assignee: assigneeInfo(task),
     reviewer: reviewerInfo(task),
   }
