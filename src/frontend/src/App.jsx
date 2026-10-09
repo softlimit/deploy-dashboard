@@ -95,6 +95,14 @@ export default function App() {
         {!error && !data && <p>Loading…</p>}
         {data && (
           <>
+            <p className="app-intro">
+              Deployment-ready tasks, revisions, and reviews pulled from ClickUp, grouped by
+              client, with one-click Slack follow-ups.
+            </p>
+            <p className="entry-count">
+              Showing {scheduled.length} tasks across {Object.keys(byClient).length} clients for{' '}
+              {date}
+            </p>
             <div className="tab-toolbar">
               <label>
                 Deployment date{' '}
