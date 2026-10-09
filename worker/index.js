@@ -9,6 +9,36 @@ function withCors(res) {
 }
 
 const REMIND_COOLDOWN_SECONDS = 24 * 60 * 60
+const REFRESH_COOLDOWN_SECONDS = 2 * 60
+
+async function triggerGithubDispatch(eventType, clientPayload, env) {
+  return fetch(`https://api.github.com/repos/${GITHUB_REPO}/dispatches`, {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${env.GITHUB_TOKEN}`,
+      Accept: 'application/vnd.github+json',
+      'Content-Type': 'application/json',
+      'User-Agent': 'deploy-dashboard-trigger-worker',
+    },
+    body: JSON.stringify({ event_type: eventType, client_payload: clientPayload }),
+  })
+}
+
+async function refresh(request, env) {
+  const guardKey = 'refresh:last'
+  if (await env.GUARD_KV.get(guardKey)) {
+    return withCors(new Response('A refresh was already triggered recently, try again shortly', { status: 429 }))
+  }
+
+  const res = await triggerGithubDispatch('refresh', {}, env)
+  if (!res.ok) {
+    const body = await res.text()
+    return withCors(new Response(`GitHub dispatch failed: ${res.status} ${body}`, { status: 502 }))
+  }
+
+  await env.GUARD_KV.put(guardKey, String(Date.now()), { expirationTtl: REFRESH_COOLDOWN_SECONDS })
+  return withCors(new Response('ok'))
+}
 
 async function dispatchDeployment(request, env) {
   const { text, deployDate } = await request.json()
@@ -43,16 +73,7 @@ async function nudge(request, env) {
     return withCors(new Response('Already reminded for this task in the last 24h', { status: 429 }))
   }
 
-  const res = await fetch(`https://api.github.com/repos/${GITHUB_REPO}/dispatches`, {
-    method: 'POST',
-    headers: {
-      Authorization: `Bearer ${env.GITHUB_TOKEN}`,
-      Accept: 'application/vnd.github+json',
-      'Content-Type': 'application/json',
-      'User-Agent': 'deploy-dashboard-trigger-worker',
-    },
-    body: JSON.stringify({ event_type: 'nudge', client_payload: payload }),
-  })
+  const res = await triggerGithubDispatch('nudge', payload, env)
   if (!res.ok) {
     const body = await res.text()
     return withCors(new Response(`GitHub dispatch failed: ${res.status} ${body}`, { status: 502 }))
@@ -71,6 +92,7 @@ export default {
     try {
       if (url.pathname === '/dispatch-deployment') return await dispatchDeployment(request, env)
       if (url.pathname === '/nudge') return await nudge(request, env)
+      if (url.pathname === '/refresh') return await refresh(request, env)
     } catch (err) {
       return withCors(new Response(`Error: ${err.message}`, { status: 500 }))
     }

@@ -19,6 +19,13 @@ function buildDeploymentMessage(deployDate, byClient) {
   return lines.join('\n')
 }
 
+export async function triggerClickUpRefresh() {
+  if (!TRIGGER_URL) return false
+  const res = await fetch(`${TRIGGER_URL}/refresh`, { method: 'POST' })
+  if (res.status === 429) return 'cooldown'
+  return res.ok
+}
+
 export async function dispatchDeployment(deployDate, byClient) {
   if (!TRIGGER_URL) {
     alert('Trigger endpoint not configured yet — Slack dispatch is not wired up.')

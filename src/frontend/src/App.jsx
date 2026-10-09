@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { dispatchDeployment, remind } from './dispatch.js'
+import { dispatchDeployment, remind, triggerClickUpRefresh } from './dispatch.js'
 
 const REMIND_COOLDOWN_MS = 24 * 60 * 60 * 1000
 const REMIND_STORAGE_PREFIX = 'remind-sent:'
@@ -122,6 +122,12 @@ export default function App() {
   async function handleRefresh() {
     setRefreshing(true)
     try {
+      const triggered = await triggerClickUpRefresh()
+      if (triggered === true) {
+        alert('Triggered a fresh pull from ClickUp — takes about a minute. Click Refresh again shortly to see it.')
+      } else if (triggered === 'cooldown') {
+        alert('A ClickUp refresh was just triggered recently — showing the latest available snapshot for now.')
+      }
       await loadData()
     } finally {
       setRefreshing(false)
