@@ -26,16 +26,18 @@ function nowInEastern() {
   return { year: get('year'), month: get('month'), day: get('day'), hour: hour === 24 ? 0 : hour }
 }
 
-// Publish is only meant to go out once, Friday afternoon/night before the
-// Monday deploy (deploy date minus 3 days, Eastern time >= noon).
+// Publish can go out Friday afternoon/night before the Monday deploy
+// (deploy date minus 3 days, Eastern time >= noon), or on the Monday of
+// the deploy itself (any time Eastern).
 function isPublishWindowOpen(deployDateStr) {
   if (!deployDateStr) return false
   const deploy = new Date(`${deployDateStr}T00:00:00`)
   const friday = new Date(deploy)
   friday.setDate(friday.getDate() - 3)
   const { year, month, day, hour } = nowInEastern()
-  const sameDay = year === friday.getFullYear() && month === friday.getMonth() + 1 && day === friday.getDate()
-  return sameDay && hour >= 12
+  const isFriday = year === friday.getFullYear() && month === friday.getMonth() + 1 && day === friday.getDate()
+  const isMonday = year === deploy.getFullYear() && month === deploy.getMonth() + 1 && day === deploy.getDate()
+  return (isFriday && hour >= 12) || isMonday
 }
 
 function alreadyPublished(deployDateStr) {
@@ -232,7 +234,7 @@ export default function App() {
                 </button>
                 {!publishDone && !publishWindowOpen && (
                   <span className="publish-hint">
-                    Opens Friday afternoon before this deploy date
+                    Opens Friday afternoon before this deploy date, or Monday of the deploy
                   </span>
                 )}
               </span>
